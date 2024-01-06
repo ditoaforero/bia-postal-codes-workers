@@ -1,0 +1,62 @@
+version: '3'
+services:
+  service:
+    image: ditoaforero/service
+    command: ["python3", "src/controller/app.py"]
+    ports:
+      - "5000:5000"
+    environment:
+      - LOCALSTACK_ENDPOINT=localstack
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=bia
+  coordinates:
+    image: ditoaforero/worker
+    command: ["python3", "coordinates.py"]
+    environment:
+      - LOCALSTACK_ENDPOINT=localstack
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=bia
+  process:
+    image: ditoaforero/worker
+    command: ["python3", "process.py"]
+    environment:
+      - LOCALSTACK_ENDPOINT=localstack
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=bia
+  localstack:
+    container_name: localstack_main
+    image: localstack/localstack
+    command: ["bash", "-c", "aws sqs create-queue --queue-name coordinates --endpoint-url http://localhost:4566"]
+    ports:
+      - "127.0.0.1:4566:4566"
+      - "127.0.0.1:4510-4559:4510-4559"
+    environment:
+      - DEBUG=${DEBUG:-0}
+    volumes:
+      - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./localstack_bootstrap:/etc/localstack/init/ready.d"
+  postgres:
+    container_name: bia-postgres
+    image: "postgres"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./initdb.d:/docker-entrypoint-initdb.d
+      - ./volume/postgres/data:/var/lib/postgresql/data/pgdata
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=bia
+
